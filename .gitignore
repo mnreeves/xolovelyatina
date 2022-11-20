@@ -67,3 +67,6 @@ node_modules/
 
 # vscode settings
 .vscode
+
+# firebase config
+/functions/service-account.json
