@@ -1,7 +1,15 @@
+import { getFirestore } from 'firebase-admin/firestore';
+import admin from 'firebase-admin';
 import * as functions from "firebase-functions";
 import Cors from 'cors';
 import express, { Express, Request, Response } from 'express';
 const { Autohook } = require('twitter-autohook');
+const serviceAccount = require("../service-account.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+const db = getFirestore();
 
 (async start => {
   try {
@@ -11,7 +19,11 @@ const { Autohook } = require('twitter-autohook');
     await webhook.removeWebhooks();
     
     // Listens to incoming activity
-    webhook.on('event', (event: any) => console.log('Something happened:', event));
+    webhook.on('event', async (event: any) => {
+      await db.collection('activites').add({
+        "event": event
+      })
+    });
 
     // Starts a server and adds a new webhook
     await webhook.start();
@@ -31,7 +43,7 @@ const app: Express = express();
 app.use(Cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.post('/wh-twitter', (req: Request, res: Response) => {
+app.post('/wh-twitter', async (req: Request, res: Response) => {
   res.send('okee');
 })
 
