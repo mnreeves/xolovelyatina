@@ -1,42 +1,40 @@
+import { CONFIG_APP } from './config/config';
+import { Client } from "twitter-api-sdk";
 import { getFirestore } from 'firebase-admin/firestore';
 import admin from 'firebase-admin';
 import * as functions from "firebase-functions";
 import Cors from 'cors';
 import express, { Express, Request, Response } from 'express';
-const { Autohook } = require('twitter-autohook');
 const serviceAccount = require("../service-account.json");
+
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 const db = getFirestore();
 
-(async start => {
-  try {
-    const webhook = new Autohook();
-    
-    // Removes existing webhooks
-    await webhook.removeWebhooks();
-    
-    // Listens to incoming activity
-    webhook.on('event', async (event: any) => {
-      await db.collection('activites').add({
-        "event": event
-      })
-    });
 
-    // Starts a server and adds a new webhook
-    await webhook.start();
-    
-    // Subscribes to your own user's activity
-    await webhook.subscribe({oauth_token: process.env.TWITTER_ACCESS_TOKEN, oauth_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET});  
-  } catch (e) {
-    // Display the error and quit
-    console.error(e);
-    process.exit(1);
+async function main() {
+  const client = new Client(CONFIG_APP.TWITTER_BEARER_TOKEN);
+  await client.tweets.addOrDeleteRules(
+    {
+      add: [
+        { "value": "from:mn_reeves" }
+      ],
+    }
+  );
+  
+  const stream = client.tweets.searchStream({
+    "tweet.fields": ["author_id", "created_at", "text"],
+  });
+  for await (const tweet of stream) {
+    db.collection('activites').add({
+        "data": tweet.data
+    })
   }
-})(); 
+}
 
+main();
 
 
 const app: Express = express();
